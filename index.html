@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Painel de Caixa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg: #101A2B;
+    --bg-deep: #0B1422;
+    --card: #17233A;
+    --card-border: #2A3A56;
+    --gold: #D4A94C;
+    --green: #5FAE7F;
+    --rust: #C1554B;
+    --text: #EDEAE1;
+    --muted: #8B96AA;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(212,169,76,0.07), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(95,174,127,0.06), transparent 45%);
+  }
+
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 22px 16px 48px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 4px;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  /* Upload button */
+  .upload-btn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    background: var(--gold);
+    color: #1A1305;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  }
+  .upload-btn:active { transform: translateY(2px); box-shadow: none; }
+
+  #fileInput { display: none; }
+
+  .filename {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Empty state */
+  .empty {
+    border: 1px dashed var(--card-border);
+    border-radius: 16px;
+    padding: 36px 20px;
+    text-align: center;
+    color: var(--muted);
+    margin-top: 40px;
+  }
+  .empty svg { margin-bottom: 14px; opacity: 0.7; }
+  .empty p { margin: 0 auto; max-width: 260px; font-size: 14px; line-height: 1.5; }
+  .empty strong { color: var(--text); }
+
+  /* Month select */
+  .month-field {
+    margin: 22px 0 18px;
+  }
+  .month-field label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .select-shell {
+    position: relative;
+  }
+  .select-shell::after {
+    content: "";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    border-right: 2px solid var(--gold);
+    border-bottom: 2px solid var(--gold);
+    transform: translateY(-65%) rotate(45deg);
+    pointer-events: none;
+  }
+  select#monthSelect {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 17px;
+    padding: 13px 40px 13px 16px;
+    border-radius: 12px;
+  }
+
+  /* Hero / total receipt card */
+  .hero {
+    position: relative;
+    background: linear-gradient(180deg, #1B2A45 0%, #16223A 100%);
+    border: 1px solid var(--card-border);
+    border-radius: 18px;
+    padding: 22px 20px 26px;
+    margin-bottom: 16px;
+    overflow: visible;
+  }
+  .hero .eyebrow { color: var(--muted); }
+  .hero-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.1;
+    margin-top: 6px;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .hero-value.pos { color: var(--green); }
+  .hero-value.neg { color: var(--rust); }
+
+  .stamp {
+    position: absolute;
+    top: -14px;
+    right: 18px;
+    background: var(--gold);
+    color: #1A1305;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    padding: 6px 12px;
+    border-radius: 999px;
+    transform: rotate(-6deg);
+    box-shadow: 0 3px 0 rgba(0,0,0,0.2);
+  }
+
+  .perforation {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: -1px;
+    height: 1px;
+    background-image: repeating-linear-gradient(90deg, var(--card-border) 0 6px, transparent 6px 12px);
+  }
+
+  /* Category cards grid */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 14px 14px 16px;
+    transition: transform 0.15s ease;
+  }
+
+  .card .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 8px;
+  }
+
+  .card .value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .card .value.pos { color: var(--green); }
+  .card .value.neg { color: var(--rust); }
+  .card .value.zero { color: var(--muted); }
+
+  .fade {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  footer.note {
+    margin-top: 22px;
+    font-size: 11.5px;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <p class="eyebrow">Fluxo de caixa</p>
+      <h1>Painel do Mês</h1>
+    </div>
+  </header>
+
+  <div class="empty" id="emptyState">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="#D4A94C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#8B96AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p id="emptyText">Carregando dados da planilha <strong>CF.xlsx</strong>…</p>
+  </div>
+
+  <div id="dashboardArea" class="hidden">
+    <div class="month-field">
+      <label for="monthSelect">Mês</label>
+      <div class="select-shell">
+        <select id="monthSelect"></select>
+      </div>
+    </div>
+
+    <div class="hero">
+      <span class="stamp" id="stampMonth">—</span>
+      <p class="eyebrow">Total do mês</p>
+      <p class="hero-value" id="totalValue">R$ 0,00</p>
+      <div class="perforation"></div>
+    </div>
+
+    <div class="grid" id="cardsGrid"></div>
+  </div>
+
+  <footer class="note">Os dados ficam apenas no seu dispositivo — nada é enviado para nenhum servidor.</footer>
+</div>
+
+<script>
+const DATA_FILE = 'CF.xlsx';
+const EXCLUDED_MONTHS = ['março', 'marco']; // normalizado sem acento/caixa
+
+const emptyState = document.getElementById('emptyState');
+const emptyText = document.getElementById('emptyText');
+const dashboardArea = document.getElementById('dashboardArea');
+const monthSelect = document.getElementById('monthSelect');
+const totalValue = document.getElementById('totalValue');
+const stampMonth = document.getElementById('stampMonth');
+const cardsGrid = document.getElementById('cardsGrid');
+
+let dataByMonth = {};   // { mes: { CATEGORIA: valor } }
+let months = [];
+let categories = [];
+
+function normalize(str) {
+  return String(str).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+window.addEventListener('DOMContentLoaded', loadData);
+
+function loadData() {
+  fetch(DATA_FILE)
+    .then(res => {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.arrayBuffer();
+    })
+    .then(buf => {
+      const wb = XLSX.read(buf, { type: 'array' });
+      parseWorkbook(wb);
+    })
+    .catch(err => {
+      console.error(err);
+      emptyText.innerHTML = `Não foi possível carregar <strong>${DATA_FILE}</strong>. Confirme que o arquivo está na mesma pasta do dashboard no repositório.`;
+    });
+}
+
+function parseWorkbook(wb) {
+  const sheetName = wb.SheetNames.find(n => n.trim().toLowerCase() === 'dashbord')
+    || wb.SheetNames.find(n => n.trim().toLowerCase().includes('dash'))
+    || wb.SheetNames[0];
+
+  const sheet = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  let headerRowIdx = -1, descColIdx = -1;
+  for (let r = 0; r < rows.length; r++) {
+    const idx = rows[r].findIndex(c => String(c).trim().toUpperCase() === 'DESCRIÇÃO' || String(c).trim().toUpperCase() === 'DESCRICAO');
+    if (idx !== -1) { headerRowIdx = r; descColIdx = idx; break; }
+  }
+
+  if (headerRowIdx === -1) {
+    emptyText.innerHTML = `Não encontrei a linha de cabeçalho "DESCRIÇÃO" na aba <strong>${sheetName}</strong>.`;
+    return;
+  }
+
+  const headerRow = rows[headerRowIdx];
+  const monthCols = [];
+  for (let c = descColIdx + 1; c < headerRow.length; c++) {
+    const label = String(headerRow[c]).trim();
+    if (label && !EXCLUDED_MONTHS.includes(normalize(label))) monthCols.push({ col: c, name: label });
+  }
+
+  const newData = {};
+  monthCols.forEach(m => newData[m.name] = {});
+  const newCategories = [];
+
+  for (let r = headerRowIdx + 1; r < rows.length; r++) {
+    const row = rows[r];
+    const cat = String(row[descColIdx] || '').trim();
+    if (!cat) continue;
+    newCategories.push(cat);
+    monthCols.forEach(m => {
+      const raw = row[m.col];
+      const num = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(',', '.'));
+      newData[m.name][cat] = isNaN(num) ? 0 : num;
+    });
+  }
+
+  if (newCategories.length === 0 || monthCols.length === 0) {
+    emptyText.textContent = 'Não encontrei dados de meses/categorias nessa aba.';
+    return;
+  }
+
+  months = monthCols.map(m => m.name);
+  categories = newCategories;
+  dataByMonth = newData;
+
+  buildMonthSelect();
+  buildCards();
+  renderMonth(months[months.length - 1]);
+
+  emptyState.classList.add('hidden');
+  dashboardArea.classList.remove('hidden');
+}
+
+function buildMonthSelect() {
+  monthSelect.innerHTML = '';
+  months.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    monthSelect.appendChild(opt);
+  });
+  monthSelect.value = months[months.length - 1];
+  monthSelect.onchange = () => renderMonth(monthSelect.value);
+}
+
+function buildCards() {
+  cardsGrid.innerHTML = '';
+  categories.forEach(cat => {
+    if (cat.toUpperCase() === 'TOTAL') return;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<p class="label">${escapeHtml(cat)}</p><p class="value" data-cat="${escapeHtml(cat)}">R$ 0,00</p>`;
+    cardsGrid.appendChild(card);
+  });
+}
+
+function fmt(n) {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function renderMonth(month) {
+  const monthData = dataByMonth[month] || {};
+  stampMonth.textContent = month;
+
+  const total = monthData['TOTAL'] !== undefined ? monthData['TOTAL']
+    : Object.values(monthData).reduce((a, b) => a + b, 0);
+
+  animateSwap(totalValue, () => {
+    totalValue.textContent = fmt(total);
+    totalValue.className = 'hero-value ' + (total > 0 ? 'pos' : total < 0 ? 'neg' : '');
+  });
+
+  document.querySelectorAll('.value[data-cat]').forEach(el => {
+    const cat = el.getAttribute('data-cat');
+    const v = monthData[cat] || 0;
+    animateSwap(el, () => {
+      el.textContent = fmt(v);
+      el.className = 'value ' + (v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero');
+    });
+  });
+}
+
+function animateSwap(el, updateFn) {
+  el.classList.add('fade');
+  setTimeout(() => {
+    updateFn();
+    el.classList.remove('fade');
+  }, 120);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, s => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[s]));
+}
+</script>
+</body>
+</html>
